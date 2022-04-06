@@ -1,0 +1,36 @@
+Comment: |
+  Parallel ASL Sample.
+  Based on https://dev.classmethod.jp/articles/aws-step-functions-parallel-execution/
+StartAt: FunWithMath
+States:
+  FunWithMath:
+    Type: Parallel
+    Branches:
+      - StartAt: Add
+        States:
+          Add:
+            Type: Task
+            Resource: ${AddFunctionArn}
+            Next: WaitForEx1
+          WaitForEx1:
+            # デバッグ用にわざと10秒待つ
+            Type: Wait
+            Seconds: 10
+            End: true
+      - StartAt: WaitForEx2
+        States:
+          WaitForEx2:
+            # デバッグ用にわざと10秒待つ
+            Type: Wait
+            Seconds: 10
+            Next: Subtract
+          Subtract:
+            Type: Task
+            Resource: ${SubFunctionArn}
+            End: true
+    Next: NextState
+  #----
+  NextState:
+    # do nothing
+    Type: Pass
+    End: true

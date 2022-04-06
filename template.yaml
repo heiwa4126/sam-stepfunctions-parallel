@@ -1,0 +1,94 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  sam-stepfunctions-parallel
+
+  Sample SAM Template for sam-stepfunctions-parallel
+
+Globals:
+  Function:
+    Timeout: 3
+    Runtime: python3.9
+    Architectures:
+      - x86_64
+  Api:
+    OpenApiVersion: 3.0.3
+
+Resources:
+  ParallelStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      DefinitionUri: statemachine/parallel.asl.yaml
+      DefinitionSubstitutions:
+        AddFunctionArn: !GetAtt AddFunction.Arn
+        SubFunctionArn: !GetAtt SubFunction.Arn
+      Policies:
+        - LambdaInvokePolicy:
+            FunctionName: !Ref AddFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref SubFunction
+        - !Ref StateMachineLogPolicy
+      Logging:
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn: !GetAtt ParallelStateMachineLogGroup.Arn
+        IncludeExecutionData: true
+        Level: ERROR
+
+  ParallelStateMachineLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 7
+      LogGroupName: !Sub
+        - "/aws/vendedlogs/states/${AWS::StackName}-ParallelStateMachine-${v1}-Log"
+        - {v1: !Select [4, !Split ["-", !Select [2, !Split [/, !Ref AWS::StackId ]]]]}
+
+  AddFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/add/
+      Handler: app.lambda_handler
+
+  SubFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/sub/
+      Handler: app.lambda_handler
+
+  AddFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DependsOn: AddFunction
+    Properties:
+      RetentionInDays: 7
+      LogGroupName: !Sub "/aws/lambda/${AddFunction}"
+
+  SubFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DependsOn: SubFunction
+    Properties:
+      RetentionInDays: 7
+      LogGroupName: !Sub "/aws/lambda/${SubFunction}"
+
+  StateMachineLogPolicy:
+    # 複数ステートマシンを作るかもしれないので、Policyをまとめてみた
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - logs:CreateLogDelivery
+              - logs:GetLogDelivery
+              - logs:UpdateLogDelivery
+              - logs:DeleteLogDelivery
+              - logs:ListLogDeliveries
+              - logs:PutResourcePolicy
+              - logs:DescribeResourcePolicies
+              - logs:DescribeLogGroups
+            Resource: '*'
+
+Outputs:
+  ParallelStateMachineArn:
+    Description: "Example parallel State machine ARN"
+    Value: !Ref ParallelStateMachine
