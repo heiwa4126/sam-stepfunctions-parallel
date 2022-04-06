@@ -23,11 +23,11 @@ pip3 install -U --user -r requirements.txt
 ./export1.py
 ```
 
-で、Step FunctionsのARNなどを
+と、実行すると、Step FunctionsのARNなどが
 - `.export.yml`
 - `.export.sh`
 
-に書き出してください。
+に書き出されます。
 
 
 # テストの実行
